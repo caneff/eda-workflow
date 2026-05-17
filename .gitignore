@@ -37,8 +37,6 @@ ENV/
 env/
 .venv
 
-# Poetry
-
 # IDEs
 .vscode/
 .idea/

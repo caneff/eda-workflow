@@ -17,34 +17,32 @@ This approach combines deterministic pandas-based analysis with LLM-powered inte
 
 ### Prerequisites
 
-- **Python 3.10 or 3.11**
-- **Poetry** (dependency manager)
+- **Python 3.14 or higher** ([uv](https://docs.astral.sh/uv/) will install one if needed)
+- **uv** (dependency manager)
 - **OpenAI API Key**
 
 ### Installation Steps
 
-1. **Install Poetry** (if not already installed):
-   
+1. **Install uv** (if not already installed):
+
    **Windows (PowerShell)**:
    ```powershell
-   (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
+   powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
-   
+
    **macOS/Linux**:
    ```bash
-   curl -sSL https://install.python-poetry.org | python3 -
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
-   
-   After installation, restart your terminal. If `poetry` command is not found:
-   - **Windows**: Add `%APPDATA%\Python\Scripts` to your system PATH
-   - **macOS/Linux**: Add `export PATH="$HOME/.local/bin:$PATH"` to your `~/.bashrc` or `~/.zshrc`
+
+   After installation, restart your terminal.
 
 2. **Install dependencies**:
    ```bash
-   poetry install
+   uv sync
    ```
-   
-   This will install all dependencies with the exact versions specified in `poetry.lock`, ensuring consistency across all environments.
+
+   This uses `uv.lock` for reproducible installs.
 
 3. **Set up your OpenAI API key**:
    
@@ -65,17 +63,12 @@ This approach combines deterministic pandas-based analysis with LLM-powered inte
 
 ### Multiple Python Versions?
 
-If you have multiple Python versions installed and want to use a specific one:
+To pin the project Python (see `.python-version`):
 
 ```bash
-# Tell Poetry which Python to use
-poetry env use python3.11  # or python3.10
-
-# Then install dependencies
-poetry install
+uv python pin 3.14
+uv sync
 ```
-
-Poetry will create a virtual environment with your chosen Python version.
 
 ## Usage
 
@@ -96,16 +89,16 @@ workflow = EDAWorkflow(model=llm)
 workflow.invoke_workflow("data/cafe_sales.csv")
 
 # Retrieve results
-summary = workflow.get_summary()              # str
+summary = workflow.get_summary()  # str
 recommendations = workflow.get_recommendations()  # list[str]
-observations = workflow.get_observations()    # dict[str, list[str]]
-results = workflow.get_results()              # dict
+observations = workflow.get_observations()  # dict[str, list[str]]
+results = workflow.get_results()  # dict
 ```
 
 ### Running the Example
 
 ```bash
-poetry run python example_usage.py
+uv run python example_usage.py
 ```
 
 This runs a full analysis on the sample dataset and prints the results for each step.
@@ -127,8 +120,8 @@ eda-agent/
 ├── .env.example                   # Environment variable template
 ├── example_usage.py               # Example script
 ├── pyproject.toml                 # Dependencies configuration
-├── poetry.lock                    # Locked dependency versions
+├── uv.lock                        # Locked dependency versions
 └── README.md
 ```
 
-**Important**: The `poetry.lock` file is committed to ensure all users get identical, tested dependency versions.
+**Important**: The `uv.lock` file is committed to ensure all users get identical, tested dependency versions.
