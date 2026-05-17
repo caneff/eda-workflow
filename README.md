@@ -1,5 +1,7 @@
 # EDA Workflow
 
+Fork maintained at [caneff/eda-workflow](https://github.com/caneff/eda-workflow). Upstream: [Future-Proof-DS/eda-workflow](https://github.com/Future-Proof-DS/eda-workflow).
+
 An AI-powered exploratory data analysis workflow that performs consistent, first-pass analysis of datasets using LangChain and LangGraph. The workflow runs a fixed set of analysis tools, uses an LLM to extract observations after each step, and synthesizes findings into a summary with actionable recommendations.
 
 ## How It Works
