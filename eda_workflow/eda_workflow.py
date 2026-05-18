@@ -69,7 +69,7 @@ class EDAState:
         if isinstance(state, EDAState):
             return state
 
-        return cls(**cast(dict[str, Any], dict(state)))
+        return cls(**dict(state))
 
 
 class EDAWorkflow:
