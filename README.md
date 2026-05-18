@@ -113,10 +113,10 @@ eda-agent/
 │   ├── __init__.py
 │   ├── eda_workflow.py             # Main workflow class and graph
 │   └── prompts/                   # LLM prompt templates
-│       ├── extract_observations_system.txt
-│       ├── extract_observations_human.txt
-│       ├── synthesize_findings_system.txt
-│       └── synthesize_findings_human.txt
+│       ├── extract_observations_system.md
+│       ├── extract_observations_human.md
+│       ├── synthesize_findings_system.md
+│       └── synthesize_findings_human.md
 ├── .env.example                   # Environment variable template
 ├── example_usage.py               # Example script
 ├── pyproject.toml                 # Dependencies configuration

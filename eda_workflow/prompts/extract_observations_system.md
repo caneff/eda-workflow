@@ -4,5 +4,5 @@
 # observations from analysis results. Use markdown sections to structure
 # your prompt (e.g., # Role, # Task, # Instructions, # Constraints).
 #
-# Refer to synthesize_findings_system.txt as an example of a well-structured
+# Refer to synthesize_findings_system.md as an example of a well-structured
 # system prompt.

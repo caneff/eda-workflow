@@ -44,6 +44,14 @@ def load_prompt(filename: str) -> str:
         return f.read()
 
 
+def load_prompt_pair(file_prefix: str) -> ChatPromptTemplate:
+    """Load system and human prompt templates for a shared file prefix."""
+    return ChatPromptTemplate.from_messages([
+        ("system", load_prompt(f"{file_prefix}_system.md")),
+        ("human", load_prompt(f"{file_prefix}_human.md")),
+    ])
+
+
 @dataclass
 class EDAState:
     """LangGraph workflow state."""
@@ -297,10 +305,7 @@ def make_eda_baseline_workflow(
 
         step_results = results.get(current_step, {})
 
-        observation_prompt = ChatPromptTemplate.from_messages([
-            ("system", load_prompt("extract_observations_system.txt")),
-            ("human", load_prompt("extract_observations_human.txt")),
-        ])
+        observation_prompt = load_prompt_pair("extract_observations")
 
         chain = observation_prompt | model.with_structured_output(ObservationOutput)
         response = cast(
@@ -337,10 +342,7 @@ def make_eda_baseline_workflow(
 
         observations_text = "\n".join(all_observations)
 
-        synthesis_prompt = ChatPromptTemplate.from_messages([
-            ("system", load_prompt("synthesize_findings_system.txt")),
-            ("human", load_prompt("synthesize_findings_human.txt")),
-        ])
+        synthesis_prompt = load_prompt_pair("synthesize_findings")
 
         chain = synthesis_prompt | model.with_structured_output(SynthesisOutput)
         response = cast(
