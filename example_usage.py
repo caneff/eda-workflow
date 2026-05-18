@@ -11,9 +11,11 @@ Requires: OPENAI_API_KEY in .env file or environment variable
 """
 
 import os
+
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
+
 from eda_workflow.eda_workflow import EDAWorkflow
+from langchain_openai import ChatOpenAI
 
 # Load environment variables from .env file
 load_dotenv()
@@ -24,14 +26,14 @@ data_path = os.path.join("data", "cafe_sales.csv")
 # Initialize OpenAI model
 llm = ChatOpenAI(
     model="gpt-4o-mini",
-    temperature=0
+    temperature=0,
 )
 
 # Create EDA workflow with the model
 workflow = EDAWorkflow(model=llm)
 
 # Save a visual diagram of the graph
-workflow._compiled_graph.get_graph().draw_mermaid_png(output_file_path="graph.png")
+workflow.draw_graph(output_file_path="graph.png")
 print("Graph diagram saved to graph.png\n")
 
 # Run analysis on the dataset
@@ -40,9 +42,9 @@ workflow.invoke_workflow(data_path)
 
 # Retrieve results
 summary = workflow.get_summary()
-recommendations = workflow.get_recommendations()
-observations = workflow.get_observations()
-results = workflow.get_results()
+recommendations = workflow.get_recommendations() or []
+observations = workflow.get_observations() or {}
+results = workflow.get_results() or {}
 
 # Display results sequentially: tool result → observations → next tool
 analysis_steps = [

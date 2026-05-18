@@ -2,7 +2,7 @@ import logging
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Self, cast
+from typing import Any, TypedDict, cast
 
 import pandas as pd
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -15,6 +15,13 @@ logger = logging.getLogger(__name__)
 WORKFLOW_NAME = "eda_workflow"
 LOG_PATH = os.path.join(os.getcwd(), "logs/")
 PROMPTS_DIR = os.path.join(os.path.dirname(__file__), "prompts")
+
+
+class SynthesisResponse(TypedDict):
+    """Structured response returned by the synthesis LLM call."""
+
+    summary: str
+    recommendations: list[str]
 
 
 def load_prompt(filename: str) -> str:
@@ -36,9 +43,12 @@ class EDAState:
     recommendations: list[str] = field(default_factory=list)
 
     @classmethod
-    def from_graph(cls, state: Self | Mapping[str, Any]) -> EDAState:
+    def from_graph(cls, state: EDAState | Mapping[str, Any]) -> EDAState:
         """Coerce LangGraph invoke output; omitted keys use dataclass defaults."""
-        return state if isinstance(state, cls) else cls(**state)
+        if isinstance(state, EDAState):
+            return state
+
+        return cls(**cast(dict[str, Any], dict(state)))
 
 
 class EDAWorkflow:
@@ -116,6 +126,12 @@ class EDAWorkflow:
 
         self.response = EDAState.from_graph(response)
         return None
+
+    def draw_graph(self, output_file_path: str) -> None:
+        """Save a Mermaid PNG diagram of the compiled workflow graph."""
+        self._compiled_graph.get_graph().draw_mermaid_png(
+            output_file_path=output_file_path
+        )
 
     def get_summary(self) -> str | None:
         """Retrieves the analysis summary."""
@@ -349,7 +365,7 @@ def make_eda_baseline_workflow(
 
         chain = synthesis_prompt | model.with_structured_output(synthesis_schema)
         response = cast(
-            dict[str, str | list[str]],
+            SynthesisResponse,
             chain.invoke({"observations": observations_text}),
         )
 
