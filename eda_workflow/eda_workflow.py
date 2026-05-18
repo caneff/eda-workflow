@@ -2,9 +2,10 @@ import logging
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
 import pandas as pd
+import pydantic
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import END, StateGraph
@@ -17,11 +18,23 @@ LOG_PATH = os.path.join(os.getcwd(), "logs/")
 PROMPTS_DIR = os.path.join(os.path.dirname(__file__), "prompts")
 
 
-class SynthesisResponse(TypedDict):
+class ObservationOutput(pydantic.BaseModel):
+    """Structured observations returned by the observation LLM call."""
+
+    observations: list[str] = pydantic.Field(
+        description="1-2 concise, actionable observations"
+    )
+
+
+class SynthesisOutput(pydantic.BaseModel):
     """Structured response returned by the synthesis LLM call."""
 
-    summary: str
-    recommendations: list[str]
+    summary: str = pydantic.Field(
+        description="A concise 2-3 sentence summary of key findings"
+    )
+    recommendations: list[str] = pydantic.Field(
+        description="3-5 actionable recommendations"
+    )
 
 
 def load_prompt(filename: str) -> str:
@@ -284,35 +297,21 @@ def make_eda_baseline_workflow(
 
         step_results = results.get(current_step, {})
 
-        observation_schema = {
-            "title": "ObservationOutput",
-            "description": "Observations extracted from an analysis step.",
-            "type": "object",
-            "properties": {
-                "observations": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "1-2 concise, actionable observations",
-                },
-            },
-            "required": ["observations"],
-        }
-
         observation_prompt = ChatPromptTemplate.from_messages([
             ("system", load_prompt("extract_observations_system.txt")),
             ("human", load_prompt("extract_observations_human.txt")),
         ])
 
-        chain = observation_prompt | model.with_structured_output(observation_schema)
+        chain = observation_prompt | model.with_structured_output(ObservationOutput)
         response = cast(
-            dict[str, list[str]],
+            ObservationOutput,
             chain.invoke({
                 "step_name": current_step.replace("_", " ").title(),
                 "results": str(step_results),
             }),
         )
 
-        observations[current_step] = response["observations"]
+        observations[current_step] = response.observations
 
         return {
             "observations": observations,
@@ -330,26 +329,6 @@ def make_eda_baseline_workflow(
                 "recommendations": [],
             }
 
-        synthesis_schema = {
-            "title": "SynthesisOutput",
-            "description": "Synthesized findings from EDA observations.",
-            "type": "object",
-            "properties": {
-                "summary": {
-                    "type": "string",
-                    "description": (
-                        "A concise 2-3 sentence summary of key findings"
-                    ),
-                },
-                "recommendations": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "3-5 actionable recommendations",
-                },
-            },
-            "required": ["summary", "recommendations"],
-        }
-
         all_observations = []
         for step_name, step_obs in observations.items():
             all_observations.append(f"\n{step_name.replace('_', ' ').title()}:")
@@ -363,15 +342,15 @@ def make_eda_baseline_workflow(
             ("human", load_prompt("synthesize_findings_human.txt")),
         ])
 
-        chain = synthesis_prompt | model.with_structured_output(synthesis_schema)
+        chain = synthesis_prompt | model.with_structured_output(SynthesisOutput)
         response = cast(
-            SynthesisResponse,
+            SynthesisOutput,
             chain.invoke({"observations": observations_text}),
         )
 
         return {
-            "summary": response["summary"],
-            "recommendations": response["recommendations"],
+            "summary": response.summary,
+            "recommendations": response.recommendations,
         }
 
     workflow = StateGraph(EDAState)
