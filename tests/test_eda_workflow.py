@@ -42,7 +42,7 @@ def sample_eda_csv_path(
 
 
 def test_eda_state_from_graph_with_existing_state_returns_same_instance():
-    state = eda_workflow.eda_workflow.EDAState(dataframe={"sales": {0: 10}})
+    state = eda_workflow.eda_workflow.EDAState(dataframe_dict={"sales": {0: 10}})
 
     result = eda_workflow.eda_workflow.EDAState.from_graph(state)
 
@@ -51,7 +51,7 @@ def test_eda_state_from_graph_with_existing_state_returns_same_instance():
 
 def test_eda_state_from_graph_with_mapping_applies_defaults():
     state = eda_workflow.eda_workflow.EDAState.from_graph({
-        "dataframe": {"sales": {0: 10}},
+        "dataframe_dict": {"sales": {0: 10}},
     })
 
     expected_defaults = {
@@ -72,6 +72,52 @@ def test_workflow_getters_before_invoke_return_none():
     assert workflow.get_recommendations() is None
     assert workflow.get_results() is None
     assert workflow.get_observations() is None
+
+
+def test_profile_dataset_summarizes_dataframe(sample_eda_dataframe: pandas.DataFrame):
+    profile = eda_workflow.eda_workflow.profile_dataset(sample_eda_dataframe)
+
+    assert_dict_contains(
+        profile,
+        {
+            "shape": {"rows": 3, "columns": 3},
+            "numeric_columns": ["sales", "units"],
+            "categorical_columns": ["region"],
+            "categorical_summary": {
+                "region": {"North": 2, "South": 1},
+            },
+        },
+    )
+
+
+def test_analyze_missingness_summarizes_missing_values(
+    sample_eda_dataframe: pandas.DataFrame,
+):
+    missingness = eda_workflow.eda_workflow.analyze_missingness(
+        sample_eda_dataframe
+    )
+
+    assert_dict_contains(
+        missingness,
+        {
+            "missing_count": {"sales": 1, "units": 1},
+            "missing_percentage": {"sales": 33.33, "units": 33.33},
+            "high_missing_columns": {"sales": 33.33, "units": 33.33},
+            "complete_rows": 1,
+        },
+    )
+
+
+def test_graph_uses_shared_extract_observations_node():
+    workflow = eda_workflow.eda_workflow.make_eda_baseline_workflow()
+
+    node_names = list(workflow.get_graph().nodes)
+
+    assert "profile_dataset" in node_names
+    assert "analyze_missingness" in node_names
+    assert node_names.count("extract_observations") == 1
+    assert "synthesize_findings" in node_names
+    assert not any(name.startswith("extract_observations_") for name in node_names)
 
 
 def test_invoke_workflow_without_model_profiles_dataset_and_missingness(

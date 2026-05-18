@@ -1,6 +1,6 @@
 import logging
 import os
-from collections.abc import Mapping
+from collections.abc import Callable, Hashable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, cast
 
@@ -37,6 +37,17 @@ class SynthesisOutput(pydantic.BaseModel):
     )
 
 
+AnalysisFunction = Callable[[pd.DataFrame], dict[str, Any]]
+
+
+@dataclass(frozen=True)
+class AnalysisStep:
+    """Named deterministic analysis step used to build the workflow graph."""
+
+    name: str
+    analyze: AnalysisFunction
+
+
 def load_prompt(filename: str) -> str:
     """Load a prompt template from the prompts directory."""
     prompt_path = os.path.join(PROMPTS_DIR, filename)
@@ -52,11 +63,78 @@ def load_prompt_pair(file_prefix: str) -> ChatPromptTemplate:
     ])
 
 
+def profile_dataset(df: pd.DataFrame) -> dict[str, Any]:
+    """Generate dataset profile with basic statistics."""
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+    categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+
+    return {
+        "shape": {"rows": len(df), "columns": len(df.columns)},
+        "columns": df.columns.tolist(),
+        "dtypes": df.dtypes.astype(str).to_dict(),
+        "numeric_columns": numeric_cols,
+        "categorical_columns": categorical_cols,
+        "numeric_summary": (
+            df[numeric_cols].describe().to_dict() if numeric_cols else {}
+        ),
+        "categorical_summary": {
+            col: df[col].value_counts().head(10).to_dict()
+            for col in categorical_cols
+        },
+    }
+
+
+def analyze_missingness(df: pd.DataFrame) -> dict[str, Any]:
+    """Analyze missing values in the dataset."""
+    missing_count = df.isnull().sum().to_dict()
+    missing_pct = (df.isnull().sum() / len(df) * 100).round(2).to_dict()
+    high_missing = {col: pct for col, pct in missing_pct.items() if pct > 20}
+
+    return {
+        "total_rows": len(df),
+        "missing_count": missing_count,
+        "missing_percentage": missing_pct,
+        "high_missing_columns": high_missing,
+        "complete_rows": int(df.dropna().shape[0]),
+        "complete_rows_pct": (
+            round(df.dropna().shape[0] / len(df) * 100, 2) if len(df) > 0 else 0
+        ),
+    }
+
+
+ANALYSIS_STEPS = [
+    AnalysisStep("profile_dataset", profile_dataset),
+    AnalysisStep("analyze_missingness", analyze_missingness),
+]
+
+
+def extract_observations(
+    model: BaseChatModel | None,
+    step_name: str,
+    step_results: dict[str, Any],
+) -> list[str]:
+    """Extract concise observations for one analysis step using an LLM."""
+    if model is None:
+        return []
+
+    observation_prompt = load_prompt_pair("extract_observations")
+    chain = observation_prompt | model.with_structured_output(ObservationOutput)
+    response = cast(
+        ObservationOutput,
+        chain.invoke({
+            "step_name": step_name.replace("_", " ").title(),
+            "results": str(step_results),
+        }),
+    )
+
+    return response.observations
+
+
 @dataclass
 class EDAState:
     """LangGraph workflow state."""
 
-    dataframe: dict
+    dataframe_dict: dict
     results: dict = field(default_factory=dict)
     observations: dict[str, list[str]] = field(default_factory=dict)
     current_step: str = ""
@@ -141,7 +219,7 @@ class EDAWorkflow:
         df = pd.read_csv(filepath)
 
         response = self._compiled_graph.invoke(
-            EDAState(dataframe=df.to_dict()),
+            EDAState(dataframe_dict=df.to_dict()),
             **kwargs,
         )
 
@@ -208,89 +286,21 @@ def make_eda_baseline_workflow(
         if not os.path.exists(log_path):
             os.makedirs(log_path)
 
-    def profile_dataset_node(state: EDAState):
-        """Generate dataset profile with basic statistics."""
-        logger.info("Profiling dataset")
-        df = pd.DataFrame.from_dict(state.dataframe)
-        results = dict(state.results)
+    def make_analysis_node(step: AnalysisStep):
+        """Create a graph node for one registered analysis step."""
 
-        numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
-        categorical_cols = df.select_dtypes(
-            include=["object", "category"]
-        ).columns.tolist()
+        def analysis_node(state: EDAState):
+            logger.info("Running analysis step: %s", step.name)
+            df = pd.DataFrame.from_dict(state.dataframe_dict)
+            results = dict(state.results)
+            results[step.name] = step.analyze(df)
 
-        profile = {
-            "shape": {"rows": len(df), "columns": len(df.columns)},
-            "columns": df.columns.tolist(),
-            "dtypes": df.dtypes.astype(str).to_dict(),
-            "numeric_columns": numeric_cols,
-            "categorical_columns": categorical_cols,
-            "numeric_summary": (
-                df[numeric_cols].describe().to_dict() if numeric_cols else {}
-            ),
-            "categorical_summary": {
-                col: df[col].value_counts().head(10).to_dict()
-                for col in categorical_cols
-            },
-        }
+            return {
+                "current_step": step.name,
+                "results": results,
+            }
 
-        results["profile_dataset"] = profile
-
-        return {
-            "current_step": "profile_dataset",
-            "results": results,
-        }
-
-    def analyze_missingness_node(state: EDAState):
-        """Analyze missing values in the dataset."""
-        logger.info("Analyzing missingness")
-        df = pd.DataFrame.from_dict(state.dataframe)
-        results = dict(state.results)
-
-        missing_count = df.isnull().sum().to_dict()
-        missing_pct = (df.isnull().sum() / len(df) * 100).round(2).to_dict()
-
-        high_missing = {col: pct for col, pct in missing_pct.items() if pct > 20}
-
-        missingness = {
-            "total_rows": len(df),
-            "missing_count": missing_count,
-            "missing_percentage": missing_pct,
-            "high_missing_columns": high_missing,
-            "complete_rows": int(df.dropna().shape[0]),
-            "complete_rows_pct": (
-                round(df.dropna().shape[0] / len(df) * 100, 2) if len(df) > 0 else 0
-            ),
-        }
-
-        results["analyze_missingness"] = missingness
-
-        return {
-            "current_step": "analyze_missingness",
-            "results": results,
-        }
-
-    def compute_aggregates_node(state: EDAState):
-        """Compute group-by aggregates on key columns.
-
-        TODO: Implement this analysis tool.
-
-        See profile_dataset_node and analyze_missingness_node for reference.
-        Store your results in results["compute_aggregates"] and return
-        {"current_step": "compute_aggregates", "results": results}.
-        """
-        logger.info("Computing aggregates")
-
-    def analyze_relationships_node(state: EDAState):
-        """Analyze relationships between variables.
-
-        TODO: Implement this analysis tool.
-
-        See profile_dataset_node and analyze_missingness_node for reference.
-        Store your results in results["analyze_relationships"] and return
-        {"current_step": "analyze_relationships", "results": results}.
-        """
-        logger.info("Analyzing relationships")
+        return analysis_node
 
     def extract_observations_node(state: EDAState):
         """Extract observations from the latest analysis results using LLM."""
@@ -300,23 +310,14 @@ def make_eda_baseline_workflow(
         results = state.results
         observations = dict(state.observations)
 
-        if model is None or not current_step or current_step not in results:
+        if not current_step or current_step not in results:
             return {"observations": observations}
 
-        step_results = results.get(current_step, {})
+        step_results = cast(dict[str, Any], results[current_step])
+        step_observations = extract_observations(model, current_step, step_results)
 
-        observation_prompt = load_prompt_pair("extract_observations")
-
-        chain = observation_prompt | model.with_structured_output(ObservationOutput)
-        response = cast(
-            ObservationOutput,
-            chain.invoke({
-                "step_name": current_step.replace("_", " ").title(),
-                "results": str(step_results),
-            }),
-        )
-
-        observations[current_step] = response.observations
+        if step_observations:
+            observations[current_step] = step_observations
 
         return {
             "observations": observations,
@@ -355,28 +356,36 @@ def make_eda_baseline_workflow(
             "recommendations": response.recommendations,
         }
 
+    step_names = [step.name for step in ANALYSIS_STEPS]
+    next_step_by_name = {
+        step_name: step_names[index + 1]
+        for index, step_name in enumerate(step_names[:-1])
+    }
+
+    def route_after_observations(state: EDAState) -> str:
+        return next_step_by_name.get(state.current_step, "synthesize_findings")
+
+    route_targets: dict[Hashable, str] = {
+        step_name: step_name for step_name in step_names[1:]
+    }
+    route_targets["synthesize_findings"] = "synthesize_findings"
+
     workflow = StateGraph(EDAState)
 
-    workflow.add_node("profile_dataset", profile_dataset_node)
-    workflow.add_node("extract_observations_1", extract_observations_node)
-    workflow.add_node("analyze_missingness", analyze_missingness_node)
-    workflow.add_node("extract_observations_2", extract_observations_node)
-    workflow.add_node("compute_aggregates", compute_aggregates_node)
-    workflow.add_node("extract_observations_3", extract_observations_node)
-    workflow.add_node("analyze_relationships", analyze_relationships_node)
-    workflow.add_node("extract_observations_4", extract_observations_node)
+    for step in ANALYSIS_STEPS:
+        workflow.add_node(step.name, make_analysis_node(step))
+    workflow.add_node("extract_observations", extract_observations_node)
     workflow.add_node("synthesize_findings", synthesize_findings_node)
 
-    workflow.set_entry_point("profile_dataset")
+    workflow.set_entry_point(ANALYSIS_STEPS[0].name)
 
-    workflow.add_edge("profile_dataset", "extract_observations_1")
-    workflow.add_edge("extract_observations_1", "analyze_missingness")
-    workflow.add_edge("analyze_missingness", "extract_observations_2")
-    workflow.add_edge("extract_observations_2", "compute_aggregates")
-    workflow.add_edge("compute_aggregates", "extract_observations_3")
-    workflow.add_edge("extract_observations_3", "analyze_relationships")
-    workflow.add_edge("analyze_relationships", "extract_observations_4")
-    workflow.add_edge("extract_observations_4", "synthesize_findings")
+    for step in ANALYSIS_STEPS:
+        workflow.add_edge(step.name, "extract_observations")
+    workflow.add_conditional_edges(
+        "extract_observations",
+        route_after_observations,
+        route_targets,
+    )
     workflow.add_edge("synthesize_findings", END)
 
     app = workflow.compile(checkpointer=checkpointer, name=WORKFLOW_NAME)
