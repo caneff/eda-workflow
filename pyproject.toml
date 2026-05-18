@@ -1,4 +1,4 @@
-﻿[project]
+[project]
 name = "eda-workflow"
 version = "0.1.0"
 description = "Exploratory Data Analysis workflow for consistent first-pass dataset analysis"
@@ -12,8 +12,17 @@ dependencies = [
     "python-dotenv>=1.0.0",
 ]
 
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.15.13",
+]
+
 [tool.uv]
 package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
 
 [tool.uv.build-backend]
 module-root = ""

@@ -67,7 +67,7 @@ for step_key, step_title in analysis_steps:
                 print(f"{key}: {value}")
     
     # Show observations
-    print(f"\nObservations:")
+    print("\nObservations:")
     if step_key in observations and observations[step_key]:
         for obs in observations[step_key]:
             print(f"  • {obs}")

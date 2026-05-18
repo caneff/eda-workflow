@@ -10,7 +10,6 @@ from langchain_core.prompts import ChatPromptTemplate
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Checkpointer
-from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 WORKFLOW_NAME = "eda_workflow"
@@ -269,23 +268,35 @@ def make_eda_baseline_workflow(
 
         step_results = results.get(current_step, {})
 
-        class ObservationOutput(BaseModel):
-            observations: list[str] = Field(
-                description="1-2 concise, actionable observations"
-            )
+        observation_schema = {
+            "title": "ObservationOutput",
+            "description": "Observations extracted from an analysis step.",
+            "type": "object",
+            "properties": {
+                "observations": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "1-2 concise, actionable observations",
+                },
+            },
+            "required": ["observations"],
+        }
 
         observation_prompt = ChatPromptTemplate.from_messages([
             ("system", load_prompt("extract_observations_system.txt")),
             ("human", load_prompt("extract_observations_human.txt")),
         ])
 
-        chain = observation_prompt | model.with_structured_output(ObservationOutput)
-        response = chain.invoke({
-            "step_name": current_step.replace("_", " ").title(),
-            "results": str(step_results),
-        })
+        chain = observation_prompt | model.with_structured_output(observation_schema)
+        response = cast(
+            dict[str, list[str]],
+            chain.invoke({
+                "step_name": current_step.replace("_", " ").title(),
+                "results": str(step_results),
+            }),
+        )
 
-        observations[current_step] = response.observations
+        observations[current_step] = response["observations"]
 
         return {
             "observations": observations,
@@ -303,13 +314,25 @@ def make_eda_baseline_workflow(
                 "recommendations": [],
             }
 
-        class SynthesisOutput(BaseModel):
-            summary: str = Field(
-                description="A concise 2-3 sentence summary of key findings"
-            )
-            recommendations: list[str] = Field(
-                description="3-5 actionable recommendations"
-            )
+        synthesis_schema = {
+            "title": "SynthesisOutput",
+            "description": "Synthesized findings from EDA observations.",
+            "type": "object",
+            "properties": {
+                "summary": {
+                    "type": "string",
+                    "description": (
+                        "A concise 2-3 sentence summary of key findings"
+                    ),
+                },
+                "recommendations": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "3-5 actionable recommendations",
+                },
+            },
+            "required": ["summary", "recommendations"],
+        }
 
         all_observations = []
         for step_name, step_obs in observations.items():
@@ -324,12 +347,15 @@ def make_eda_baseline_workflow(
             ("human", load_prompt("synthesize_findings_human.txt")),
         ])
 
-        chain = synthesis_prompt | model.with_structured_output(SynthesisOutput)
-        response = chain.invoke({"observations": observations_text})
+        chain = synthesis_prompt | model.with_structured_output(synthesis_schema)
+        response = cast(
+            dict[str, str | list[str]],
+            chain.invoke({"observations": observations_text}),
+        )
 
         return {
-            "summary": response.summary,
-            "recommendations": response.recommendations,
+            "summary": response["summary"],
+            "recommendations": response["recommendations"],
         }
 
     workflow = StateGraph(EDAState)
