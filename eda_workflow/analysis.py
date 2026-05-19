@@ -45,7 +45,9 @@ def profile_dataset(
 ) -> dict[str, Any]:
     """Generate dataset profile with basic statistics."""
     numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
-    categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+    categorical_cols = df.select_dtypes(
+        include=["object", "category", "str"],
+    ).columns.tolist()
 
     return {
         "shape": {"rows": len(df), "columns": len(df.columns)},
@@ -111,13 +113,14 @@ def _get_eligible_groups(
     if len(eligible_group_summary) <= 1:
         return {}, []
 
-    eligible_groups = {
-        group: {
-            "count": int(row["count"]),
-            "percentage": _round_or_none(row["percentage"]),
+    eligible_groups = {}
+    for group in eligible_group_summary.index:
+        eligible_groups[group] = {
+            "count": int(cast(Any, eligible_group_summary.at[group, "count"])),
+            "percentage": _round_or_none(
+                eligible_group_summary.at[group, "percentage"],
+            ),
         }
-        for group, row in eligible_group_summary.iterrows()
-    }
 
     return eligible_groups, list(eligible_group_summary.index)
 
