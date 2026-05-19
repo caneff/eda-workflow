@@ -1,0 +1,121 @@
+customer_id,region,channel,customer_segment,product_category,promo_type,monthly_spend,visit_count,lifetime_value,wait_time_minutes,satisfaction_score,discount_rate,sparse_quality_score
+CUST-0001,South,Delivery,Standard,Merchandise,Seasonal,63.97,8,1042.53,26.68,40.38,,
+CUST-0002,West,In Store,Budget,Lunch,No Promo,29.01,4,346.99,8.06,83.5,0.17,86.93
+CUST-0003,South,Delivery,Budget,Coffee,Loyalty,19.35,2,189.8,27.36,40.28,0.25,66.16
+CUST-0004,North,In Store,Standard,Lunch,Seasonal,56.3,7,857.97,10.38,77.28,0.16,
+CUST-0005,South,Delivery,Budget,Coffee,Seasonal,25.28,3,275.75,26.95,38.07,0.06,77.37
+CUST-0006,North,Mobile App,Premium,Lunch,Loyalty,117.72,15,2777.63,3.38,92.59,0.26,89.3
+CUST-0007,East,Mobile App,Standard,Bakery,No Promo,48.25,6,683.76,7.78,81.66,0.05,
+CUST-0008,North,Mobile App,Budget,Coffee,Loyalty,21.35,2,210.18,2.45,90.89,0.06,83.48
+CUST-0009,South,In Store,Standard,Coffee,No Promo,54.99,6,782.44,7.9,80.95,0.04,95.43
+CUST-0010,East,In Store,Standard,Coffee,Loyalty,46.49,6,658.07,9.88,76.64,0.05,
+CUST-0011,West,Catering,Standard,Coffee,Seasonal,45.19,5,593.93,19.1,57.83,0.21,75.39
+CUST-0012,East,Delivery,Budget,Lunch,No Promo,33.02,4,396.66,25.75,44.28,0.14,68.17
+CUST-0013,West,In Store,Standard,Lunch,New Customer,61.72,8,1004.85,9.57,74.46,0.3,
+CUST-0014,East,Mobile App,Budget,Coffee,Loyalty,23.64,3,257.26,6.43,83.32,0.13,68.66
+CUST-0015,East,In Store,Budget,Bakery,New Customer,23.51,3,255.8,8.73,80.44,0.3,93.96
+CUST-0016,South,In Store,Premium,Bakery,New Customer,105.63,13,2275.22,6.63,85.46,0.09,
+CUST-0017,East,Mobile App,Standard,Tea,No Promo,44.68,7,676.37,6.25,86.05,0.26,59.12
+CUST-0018,South,In Store,Premium,Merchandise,Loyalty,121.12,15,2859.65,10.94,72.92,0.15,83.98
+CUST-0019,North,Mobile App,Premium,Tea,Loyalty,103.66,13,2231.8,3.77,87.08,0.21,
+CUST-0020,West,Delivery,Standard,Bakery,Loyalty,50.45,6,715.92,25.58,43.01,0.34,60.16
+CUST-0021,North,In Store,Standard,Bakery,Seasonal,54.96,7,836.96,5.95,85.29,,80.55
+CUST-0022,North,Mobile App,Budget,Lunch,Loyalty,30.79,4,369.01,7.89,80.48,0.13,
+CUST-0023,West,In Store,Budget,Bakery,Influencer,28.51,3,312.31,5.6,84.65,0.32,97.95
+CUST-0024,West,Catering,Budget,Tea,Seasonal,27.55,3,301.42,18.29,59.11,0.31,84.61
+CUST-0025,East,Catering,Premium,Lunch,Seasonal,117.74,14,2660.37,18.36,60.39,0.12,
+CUST-0026,North,In Store,Standard,Coffee,Seasonal,53.6,7,815.65,7.68,80.78,0.17,76.68
+CUST-0027,North,Mobile App,Standard,Tea,No Promo,47.3,6,669.89,3.53,87.71,0.15,80.85
+CUST-0028,West,In Store,Budget,Bakery,No Promo,25.35,2,251.19,5.96,86.51,0.34,
+CUST-0029,South,In Store,Standard,Coffee,No Promo,46.21,5,607.78,7.74,84.22,0.22,62.93
+CUST-0030,North,Delivery,Standard,Coffee,No Promo,45.31,6,640.87,28.97,33.37,0.04,68.36
+CUST-0031,East,Catering,Standard,Bakery,Loyalty,47.01,5,618.65,15.18,63.0,0.05,
+CUST-0032,East,Mobile App,Budget,Lunch,Loyalty,27.57,4,329.22,7.92,83.33,0.33,78.03
+CUST-0033,North,Catering,Standard,Lunch,New Customer,58.34,7,889.99,16.84,64.4,0.2,97.91
+CUST-0034,West,In Store,Budget,Lunch,Seasonal,36.86,5,481.29,5.4,87.13,0.14,
+CUST-0035,West,In Store,Premium,Lunch,New Customer,119.93,16,2950.86,6.41,83.54,0.26,88.13
+CUST-0036,East,In Store,Premium,Coffee,No Promo,102.54,13,2207.12,7.79,79.96,0.29,66.56
+CUST-0037,South,Mobile App,Standard,Coffee,No Promo,54.99,7,837.43,7.22,81.76,0.06,
+CUST-0038,North,Mobile App,Standard,Coffee,Loyalty,54.5,8,884.25,3.77,88.82,0.19,56.38
+CUST-0039,West,Delivery,Budget,Lunch,Seasonal,33.56,4,403.36,30.04,34.77,0.27,64.38
+CUST-0040,West,Delivery,Budget,Bakery,New Customer,29.74,4,356.02,28.95,36.58,0.14,
+CUST-0041,East,Mobile App,Premium,Lunch,Seasonal,119.99,15,2832.38,6.04,86.62,,79.15
+CUST-0042,North,Delivery,Premium,Bakery,Seasonal,109.44,13,2359.27,28.25,36.47,0.16,64.11
+CUST-0043,North,Delivery,Budget,Bakery,Loyalty,26.37,3,288.07,27.28,41.91,0.13,
+CUST-0044,North,Mobile App,Standard,Coffee,New Customer,45.12,5,592.98,4.36,88.57,0.28,59.94
+CUST-0045,West,Delivery,Premium,Merchandise,Loyalty,120.0,14,2712.62,29.39,32.87,0.34,66.6
+CUST-0046,North,In Store,Premium,Coffee,No Promo,111.67,14,2520.16,9.62,76.52,0.1,
+CUST-0047,West,In Store,Budget,Bakery,No Promo,23.39,3,254.45,6.44,83.15,0.14,76.42
+CUST-0048,South,In Store,Standard,Tea,No Promo,47.86,6,678.07,10.9,71.99,0.28,81.87
+CUST-0049,South,Mobile App,Budget,Merchandise,No Promo,38.71,5,506.23,6.91,82.62,0.33,
+CUST-0050,East,Catering,Standard,Coffee,No Promo,54.25,6,771.58,16.82,63.86,0.14,69.22
+CUST-0051,East,Delivery,Premium,Coffee,Loyalty,105.62,14,2380.62,26.05,44.33,0.22,63.19
+CUST-0052,North,In Store,Standard,Bakery,New Customer,47.14,7,714.69,8.36,81.14,0.11,
+CUST-0053,North,Mobile App,Budget,Merchandise,Seasonal,35.97,5,469.31,4.94,86.39,0.3,58.46
+CUST-0054,East,In Store,Premium,Tea,New Customer,108.04,14,2436.41,5.99,83.35,0.05,80.34
+CUST-0055,North,In Store,Standard,Lunch,Seasonal,56.82,8,922.95,10.65,77.46,0.33,
+CUST-0056,West,Mobile App,Premium,Tea,Loyalty,107.59,14,2426.04,2.49,93.72,0.24,72.76
+CUST-0057,South,Delivery,Standard,Coffee,No Promo,50.31,6,713.87,29.39,34.07,0.14,55.11
+CUST-0058,East,In Store,Pilot,Coffee,Loyalty,14.53,3,155.59,9.56,78.67,0.3,
+CUST-0059,West,Delivery,Premium,Bakery,Loyalty,112.82,14,2546.71,27.45,38.73,0.34,80.66
+CUST-0060,North,Delivery,Premium,Lunch,No Promo,113.16,13,2441.4,30.77,28.96,0.27,97.89
+CUST-0061,North,In Store,Budget,Coffee,Loyalty,27.47,2,273.05,5.02,88.15,,
+CUST-0062,West,Delivery,Premium,Bakery,No Promo,106.91,13,2303.45,30.13,35.24,0.35,93.93
+CUST-0063,East,In Store,Budget,Bakery,No Promo,22.2,2,218.87,10.94,76.55,0.22,56.68
+CUST-0064,East,In Store,Standard,Bakery,Loyalty,49.16,6,697.06,6.48,84.5,0.13,
+CUST-0065,South,In Store,Premium,Bakery,No Promo,111.41,15,2625.57,9.62,79.86,0.27,70.4
+CUST-0066,East,Mobile App,Budget,Coffee,No Promo,23.23,3,252.65,3.99,88.25,0.24,74.85
+CUST-0067,South,Delivery,Premium,Lunch,No Promo,110.57,14,2494.78,26.62,40.04,0.24,
+CUST-0068,North,Mobile App,Standard,Bakery,Seasonal,50.35,6,714.46,7.74,79.91,0.2,96.67
+CUST-0069,North,In Store,Standard,Coffee,New Customer,49.87,7,757.31,8.56,76.64,0.16,60.51
+CUST-0070,South,Delivery,Standard,Lunch,Loyalty,55.72,7,848.87,30.06,34.73,0.26,
+CUST-0071,East,Mobile App,Premium,Coffee,No Promo,107.13,13,2308.3,4.47,91.34,0.14,93.93
+CUST-0072,South,Delivery,Standard,Bakery,No Promo,51.56,7,783.72,28.58,38.58,0.05,55.55
+CUST-0073,West,Delivery,Standard,Merchandise,Loyalty,60.4,8,982.77,26.11,44.66,0.31,
+CUST-0074,South,Delivery,Premium,Lunch,Loyalty,115.47,15,2723.38,29.06,37.13,0.24,78.73
+CUST-0075,East,Delivery,Pilot,Tea,No Promo,15.26,3,163.66,27.27,38.13,0.22,86.27
+CUST-0076,South,Delivery,Standard,Bakery,Loyalty,56.37,6,802.7,30.59,31.75,0.07,
+CUST-0077,South,Mobile App,Premium,Coffee,No Promo,110.85,15,2612.09,2.18,94.14,0.27,92.99
+CUST-0078,North,Mobile App,Standard,Coffee,Loyalty,53.86,7,819.72,4.39,87.52,0.17,96.48
+CUST-0079,North,Delivery,Premium,Lunch,No Promo,115.71,15,2729.17,29.13,32.77,0.1,
+CUST-0080,North,Delivery,Budget,Tea,Seasonal,18.99,3,205.13,28.64,36.75,0.02,81.6
+CUST-0081,West,In Store,Budget,Bakery,Loyalty,21.98,3,238.6,5.06,85.32,,60.67
+CUST-0082,South,In Store,Premium,Bakery,No Promo,108.03,14,2436.18,9.85,75.07,0.13,
+CUST-0083,West,In Store,Premium,Bakery,Seasonal,110.39,13,2380.23,10.81,72.57,0.07,71.43
+CUST-0084,East,In Store,Standard,Bakery,No Promo,47.95,7,727.33,8.26,77.41,0.22,78.85
+CUST-0085,West,Mobile App,Budget,Tea,Loyalty,26.9,4,320.96,7.47,82.86,0.05,
+CUST-0086,South,In Store,Premium,Tea,Loyalty,109.09,13,2351.54,5.31,88.47,0.29,70.74
+CUST-0087,East,Delivery,Standard,Coffee,No Promo,45.99,5,604.79,27.34,40.18,0.35,83.7
+CUST-0088,North,In Store,Standard,Coffee,Influencer,48.96,6,694.13,9.73,77.1,0.17,
+CUST-0089,West,Delivery,Budget,Bakery,Influencer,25.64,4,305.46,27.54,37.89,0.04,90.85
+CUST-0090,West,In Store,Budget,Tea,No Promo,21.64,2,213.14,9.99,75.44,0.3,80.37
+CUST-0091,South,Delivery,Premium,Lunch,No Promo,119.11,15,2811.15,28.58,34.57,0.06,
+CUST-0092,South,Delivery,Standard,Tea,No Promo,44.1,6,623.24,27.4,40.94,0.26,68.95
+CUST-0093,East,Catering,Premium,Lunch,No Promo,119.54,14,2701.98,15.52,63.24,0.05,61.07
+CUST-0094,East,Delivery,Budget,Bakery,No Promo,30.44,3,334.23,28.82,36.6,0.22,
+CUST-0095,East,Mobile App,Standard,Coffee,New Customer,50.95,6,723.23,6.57,84.95,0.07,64.7
+CUST-0096,South,Mobile App,Premium,Lunch,No Promo,116.41,14,2629.63,3.56,93.27,0.32,85.45
+CUST-0097,West,In Store,Pilot,Tea,Loyalty,19.34,2,189.69,7.31,79.84,0.21,
+CUST-0098,West,Delivery,Standard,Bakery,No Promo,55.55,8,901.76,28.83,36.34,0.31,57.46
+CUST-0099,South,Mobile App,Premium,Tea,Loyalty,101.39,13,2181.79,7.96,78.38,0.2,57.49
+CUST-0100,South,In Store,Budget,Coffee,No Promo,20.75,3,224.81,10.32,75.69,0.28,
+CUST-0101,North,Mobile App,Budget,Tea,No Promo,18.53,3,199.99,4.74,85.85,,64.78
+CUST-0102,South,Delivery,Budget,Tea,Seasonal,27.35,4,326.51,28.96,37.64,0.32,86.76
+CUST-0103,South,Catering,Pilot,Tea,Loyalty,18.05,1,158.54,18.39,59.78,0.29,
+CUST-0104,South,Mobile App,Premium,Lunch,Seasonal,113.06,15,2665.31,2.47,92.04,0.06,80.62
+CUST-0105,West,Delivery,Premium,Bakery,New Customer,111.53,14,2516.93,30.34,30.02,0.28,63.81
+CUST-0106,North,Mobile App,Standard,Coffee,No Promo,49.68,7,754.34,2.92,91.92,0.15,
+CUST-0107,South,In Store,Budget,Coffee,No Promo,28.69,3,314.35,5.84,82.51,0.24,83.04
+CUST-0108,East,In Store,Standard,Lunch,Influencer,53.85,6,765.72,5.15,88.24,0.34,95.88
+CUST-0109,North,In Store,Premium,Lunch,No Promo,118.62,14,2680.71,8.88,79.88,0.17,
+CUST-0110,North,In Store,Premium,Lunch,No Promo,113.45,14,2561.26,5.34,87.57,0.05,95.27
+CUST-0111,South,Mobile App,Standard,Lunch,Seasonal,62.91,8,1024.77,6.53,85.36,0.15,79.25
+CUST-0112,South,Catering,Standard,Coffee,Seasonal,54.62,8,886.25,20.76,51.88,0.21,
+CUST-0113,East,In Store,Budget,Coffee,Seasonal,24.74,4,294.4,9.77,77.74,0.07,55.92
+CUST-0114,West,Mobile App,Premium,Coffee,No Promo,108.42,13,2336.76,2.71,89.49,0.3,55.59
+CUST-0115,North,In Store,Budget,Coffee,Loyalty,27.44,3,300.18,6.3,85.02,0.07,
+CUST-0116,East,Delivery,Budget,Bakery,Seasonal,22.91,3,249.05,30.37,33.21,0.22,85.13
+CUST-0117,North,In Store,Budget,Merchandise,No Promo,37.47,4,452.04,5.82,86.28,0.15,55.68
+CUST-0118,East,Delivery,Premium,Lunch,Seasonal,110.32,14,2489.01,26.74,37.97,0.13,
+CUST-0119,North,In Store,Standard,Merchandise,No Promo,58.7,8,954.35,8.66,82.34,0.18,69.35
+CUST-0120,North,Catering,Standard,Coffee,No Promo,50.19,5,661.92,20.7,53.25,0.23,67.41

@@ -33,6 +33,8 @@ venv/
 
 # Generated files
 graph.png
+eda_report.md
+eda_report.html
 ENV/
 env/
 .venv
@@ -64,6 +66,7 @@ htmlcov/
 *.feather
 data/*
 !data/cafe_sales.csv
+!data/eda_showcase.csv
 datasets/
 
 # Model files
