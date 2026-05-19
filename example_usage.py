@@ -14,7 +14,7 @@ import os
 
 from dotenv import load_dotenv
 
-from eda_workflow.eda_workflow import EDAWorkflow
+from eda_workflow.workflow import EDAWorkflow
 from langchain_openai import ChatOpenAI
 
 # Load environment variables from .env file

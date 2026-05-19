@@ -77,7 +77,7 @@ uv sync
 ```python
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
-from eda_workflow.eda_workflow import EDAWorkflow
+from eda_workflow.workflow import EDAWorkflow
 
 load_dotenv()
 
