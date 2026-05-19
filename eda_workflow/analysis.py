@@ -83,6 +83,152 @@ def analyze_missingness(
     }
 
 
+def _get_eligible_groups(
+    df: pd.DataFrame,
+    categorical_column: str,
+    max_groups: int,
+    min_percentage: float,
+) -> tuple[dict[Any, dict[str, float | int | None]], list[Any]]:
+    """Return sufficiently common category groups and their row coverage."""
+    if df[categorical_column].nunique(dropna=True) <= 1:
+        return {}, []
+
+    group_counts = cast(
+        pd.Series,
+        df[categorical_column].value_counts(dropna=True),
+    )
+    group_summary = pd.DataFrame({
+        "count": group_counts,
+        "percentage": group_counts / len(df) * 100,
+    })
+    eligible_group_summary = cast(
+        pd.DataFrame,
+        group_summary.loc[group_summary["percentage"] >= min_percentage].nlargest(
+            max_groups,
+            "count",
+        ),
+    )
+    if len(eligible_group_summary) <= 1:
+        return {}, []
+
+    eligible_groups = {
+        group: {
+            "count": int(row["count"]),
+            "percentage": _round_or_none(row["percentage"]),
+        }
+        for group, row in eligible_group_summary.iterrows()
+    }
+
+    return eligible_groups, list(eligible_group_summary.index)
+
+
+def _summarize_categorical_column(
+    df: pd.DataFrame,
+    categorical_column: str,
+    numeric_columns: list[str],
+    max_groups: int,
+    min_percentage: float,
+) -> dict[str, Any]:
+    """Summarize numeric columns for one categorical column."""
+    eligible_groups, eligible_group_names = _get_eligible_groups(
+        df,
+        categorical_column,
+        max_groups,
+        min_percentage,
+    )
+    if not eligible_groups:
+        return {}
+
+    numeric_summaries = {}
+    eligible_df = df.loc[df[categorical_column].isin(eligible_group_names)]
+    if not numeric_columns:
+        return {}
+
+    overall_values = df[numeric_columns]
+    q1 = overall_values.quantile(0.25)
+    q3 = overall_values.quantile(0.75)
+    overall_stats = (
+        pd.DataFrame({
+            "median": overall_values.median(),
+            "mean": overall_values.mean(),
+            "std": overall_values.std(),
+            "q1": q1,
+            "q3": q3,
+            "iqr": q3 - q1,
+        })
+        .dropna(subset=["median"])
+        .rename_axis("numeric_column")
+        .reset_index()
+    )
+    if overall_stats.empty:
+        return {}
+
+    # Compute every numeric summary in one groupby call. Pandas returns a wide
+    # table with a two-level column index: numeric column, then statistic.
+    group_stats = cast(
+        pd.DataFrame,
+        eligible_df.groupby(categorical_column, observed=True)[numeric_columns].agg(
+            ["median", "mean", "std"]
+        ),
+    )
+    # Reshape to one row per category/numeric-column pair so it can be merged
+    # with the overall numeric summary and filtered by the IQR rule below.
+    group_stats_long = cast(
+        pd.DataFrame,
+        group_stats.stack(level=0, future_stack=True),
+    )
+    group_stats_long.index.names = [categorical_column, "numeric_column"]
+    group_stats_long = cast(pd.DataFrame, group_stats_long.reset_index())
+    group_stats_long = group_stats_long.dropna(subset=["median"])
+
+    notable_stats = group_stats_long.merge(
+        overall_stats,
+        on="numeric_column",
+        suffixes=("_group", "_overall"),
+    )
+    notable_stats = notable_stats.loc[
+        (notable_stats["median_group"] < notable_stats["q1"])
+        | (notable_stats["median_group"] > notable_stats["q3"])
+    ]
+
+    for numeric_column, numeric_stats in notable_stats.groupby(
+        "numeric_column",
+        sort=False,
+    ):
+        overall_row = numeric_stats.iloc[0]
+        notable_groups = {}
+
+        for _, stats in numeric_stats.iterrows():
+            group = stats[categorical_column]
+            notable_groups[group] = {
+                "count": eligible_groups[group]["count"],
+                "percentage": eligible_groups[group]["percentage"],
+                "median": _round_or_none(stats["median_group"]),
+                "mean": _round_or_none(stats["mean_group"]),
+                "std": _round_or_none(stats["std_group"]),
+            }
+
+        numeric_summaries[numeric_column] = {
+            "overall": {
+                "median": _round_or_none(overall_row["median_overall"]),
+                "mean": _round_or_none(overall_row["mean_overall"]),
+                "std": _round_or_none(overall_row["std_overall"]),
+                "q1": _round_or_none(overall_row["q1"]),
+                "q3": _round_or_none(overall_row["q3"]),
+                "iqr": _round_or_none(overall_row["iqr"]),
+            },
+            "groups": notable_groups,
+        }
+
+    if not numeric_summaries:
+        return {}
+
+    return {
+        "eligible_groups": eligible_groups,
+        "numeric_summaries": numeric_summaries,
+    }
+
+
 def compute_aggregates(
     df: pd.DataFrame,
     **kwargs: Any,
@@ -140,93 +286,17 @@ def compute_aggregates(
     ]
 
     aggregate_results: dict[str, Any] = {}
-    total_rows = len(df)
 
     for categorical_column in categorical_columns:
-        if df[categorical_column].nunique(dropna=True) <= 1:
-            continue
-
-        # Choose sufficiently common category groups before comparing numerics.
-        group_counts = cast(
-            pd.Series,
-            df[categorical_column].value_counts(dropna=True),
+        categorical_summary = _summarize_categorical_column(
+            df,
+            categorical_column,
+            numeric_columns,
+            max_groups,
+            min_percentage,
         )
-        group_summary = pd.DataFrame({
-            "count": group_counts,
-            "percentage": group_counts / total_rows * 100,
-        })
-        eligible_group_summary = cast(
-            pd.DataFrame,
-            group_summary.loc[group_summary["percentage"] >= min_percentage].nlargest(
-                max_groups,
-                "count",
-            ),
-        )
-        if len(eligible_group_summary) <= 1:
-            continue
-
-        eligible_group_names = list(eligible_group_summary.index)
-
-        eligible_groups = {
-            group: {
-                "count": int(row["count"]),
-                "percentage": _round_or_none(row["percentage"]),
-            }
-            for group, row in eligible_group_summary.iterrows()
-        }
-
-        numeric_summaries = {}
-        eligible_df = df.loc[df[categorical_column].isin(eligible_group_names)]
-
-        for numeric_column in numeric_columns:
-            overall_values = df[numeric_column].dropna()
-            if overall_values.empty:
-                continue
-
-            # Compute the overall reference band used for outlier group filtering.
-            q1 = overall_values.quantile(0.25)
-            q3 = overall_values.quantile(0.75)
-            overall = {
-                "median": _round_or_none(overall_values.median()),
-                "mean": _round_or_none(overall_values.mean()),
-                "std": _round_or_none(overall_values.std()),
-                "q1": _round_or_none(q1),
-                "q3": _round_or_none(q3),
-                "iqr": _round_or_none(q3 - q1),
-            }
-
-            group_stats = (
-                eligible_df.groupby(categorical_column, observed=True)[numeric_column]
-                .agg(["median", "mean", "std"])
-                .dropna(subset=["median"])
-            )
-
-            notable_groups = {}
-            for group, stats in group_stats.iterrows():
-                group_median = stats["median"]
-                if q1 <= group_median <= q3:
-                    continue
-
-                # Keep only groups whose median sits outside the overall IQR.
-                notable_groups[group] = {
-                    "count": eligible_groups[group]["count"],
-                    "percentage": eligible_groups[group]["percentage"],
-                    "median": _round_or_none(group_median),
-                    "mean": _round_or_none(stats["mean"]),
-                    "std": _round_or_none(stats["std"]),
-                }
-
-            if notable_groups:
-                numeric_summaries[numeric_column] = {
-                    "overall": overall,
-                    "groups": notable_groups,
-                }
-
-        if numeric_summaries:
-            aggregate_results[categorical_column] = {
-                "eligible_groups": eligible_groups,
-                "numeric_summaries": numeric_summaries,
-            }
+        if categorical_summary:
+            aggregate_results[categorical_column] = categorical_summary
 
     return aggregate_results
 
