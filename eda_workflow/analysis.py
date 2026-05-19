@@ -1,4 +1,5 @@
 import enum
+import itertools
 import math
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -283,6 +284,8 @@ def compute_aggregates(
     if max_groups <= 0:
         return {}
 
+    # Reuse upstream profiling so relationship analysis stays aligned with
+    # other numeric-only steps and skips sparse columns.
     high_missing_columns = set(missingness.get("high_missing_columns", {}))
 
     # Read upstream profile context and exclude columns already flagged as sparse.
@@ -317,18 +320,78 @@ def analyze_relationships(
     df: pd.DataFrame,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Analyze relationships between variables."""
+    """Analyze Spearman rank relationships between numeric columns."""
+    results = kwargs.get("results")
+    if not isinstance(results, Mapping) or len(df) == 0:
+        return {}
 
-    # Get results and profile as in aggregate_results beginning. Get all numeric columns that aren't highly missing.
+    profile = results.get(AnalysisStepName.PROFILE_DATASET.value)
+    missingness = results.get(AnalysisStepName.ANALYZE_MISSINGNESS.value)
+    if not isinstance(profile, Mapping) or not isinstance(missingness, Mapping):
+        return {}
 
-    # Calculate spearman rank correlations between every pair of numeric columns that is remaining.  Only keep up to `max_correlations`
-    # and only keep correlations with absolute values above `corr_threshold`. Keep only the largest in absolute value.
+    max_correlations = int(kwargs.get("max_correlations", 10))
+    corr_threshold = float(kwargs.get("corr_threshold", 0.5))
+    if max_correlations <= 0:
+        return {}
 
-    # For each kept pair, make dictionary entries that track both feature names, correlation, and correlation direction (positive or negative)
+    high_missing_columns = set(missingness.get("high_missing_columns", {}))
+    numeric_columns = [
+        col
+        for col in profile.get("numeric_columns", [])
+        if col in df.columns and col not in high_missing_columns
+    ]
+    if len(numeric_columns) < 2:
+        return {}
 
-    # Finally output a dict with the strongest positive and strongest negative relationships separated, as well as a list of each numeric column
-    # considered.
-    return {}
+    # Spearman captures monotonic relationships without assuming linear scale.
+    relationship_values = df.loc[:, numeric_columns]
+    correlation_matrix = relationship_values.corr(method="spearman")
+    # Build each unordered feature pair exactly once.
+    correlation_pairs = pd.DataFrame(
+        {
+            "feature_1": feature_1,
+            "feature_2": feature_2,
+            "correlation": correlation_matrix.loc[feature_1, feature_2],
+        }
+        for feature_1, feature_2 in itertools.combinations(numeric_columns, 2)
+    ).dropna(subset=["correlation"])
+    correlation_pairs = correlation_pairs.assign(
+        absolute_correlation=correlation_pairs["correlation"].abs(),
+    )
+    # Limit after sorting by absolute value so max_correlations applies across
+    # positive and negative relationships together.
+    strongest_pairs = correlation_pairs.loc[
+        correlation_pairs["absolute_correlation"] >= corr_threshold
+    ].nlargest(max_correlations, "absolute_correlation")
+
+    relationships = []
+    for pair in strongest_pairs.to_dict(orient="records"):
+        correlation = _round_or_none(pair["correlation"])
+        if correlation is None:
+            continue
+
+        relationships.append({
+            "feature_1": pair["feature_1"],
+            "feature_2": pair["feature_2"],
+            "correlation": correlation,
+            "direction": "positive" if correlation >= 0 else "negative",
+        })
+
+    # Keep the strongest set total-limited, then split by direction for synthesis.
+    return {
+        "columns_considered": numeric_columns,
+        "strongest_positive_relationships": [
+            relationship
+            for relationship in relationships
+            if relationship["direction"] == "positive"
+        ],
+        "strongest_negative_relationships": [
+            relationship
+            for relationship in relationships
+            if relationship["direction"] == "negative"
+        ],
+    }
 
 
 # Register all above analysis steps in this list. extract_observations will be called after every step
@@ -337,4 +400,5 @@ ANALYSIS_STEPS = [
     AnalysisStep(AnalysisStepName.PROFILE_DATASET, profile_dataset),
     AnalysisStep(AnalysisStepName.ANALYZE_MISSINGNESS, analyze_missingness),
     AnalysisStep(AnalysisStepName.COMPUTE_AGGREGATES, compute_aggregates),
+    AnalysisStep(AnalysisStepName.ANALYZE_RELATIONSHIPS, analyze_relationships),
 ]

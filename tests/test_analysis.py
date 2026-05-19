@@ -159,3 +159,60 @@ def test_compute_aggregates_without_prior_results_returns_empty_dict(
     sample_eda_dataframe: pandas.DataFrame,
 ):
     assert analysis.compute_aggregates(sample_eda_dataframe) == {}
+
+
+def test_analyze_relationships_summarizes_strong_numeric_correlations():
+    dataframe = pandas.DataFrame({
+        "sales": [1, 2, 3, 4, 5, 6],
+        "profit": [1, 4, 9, 16, 25, 36],
+        "returns": [12, 10, 8, 6, 4, 2],
+        "weak_signal": [1, 3, 2, 5, 4, 6],
+        "unstable_score": [1, None, None, None, None, None],
+    })
+    results = {
+        "profile_dataset": {
+            "numeric_columns": [
+                "sales",
+                "profit",
+                "returns",
+                "weak_signal",
+                "unstable_score",
+            ],
+        },
+        "analyze_missingness": {
+            "high_missing_columns": {"unstable_score": 83.33},
+        },
+    }
+
+    relationships = analysis.analyze_relationships(
+        dataframe,
+        results=results,
+        max_correlations=2,
+        corr_threshold=0.95,
+    )
+
+    assert relationships == {
+        "columns_considered": ["sales", "profit", "returns", "weak_signal"],
+        "strongest_positive_relationships": [
+            {
+                "feature_1": "sales",
+                "feature_2": "profit",
+                "correlation": 1.0,
+                "direction": "positive",
+            },
+        ],
+        "strongest_negative_relationships": [
+            {
+                "feature_1": "sales",
+                "feature_2": "returns",
+                "correlation": -1.0,
+                "direction": "negative",
+            },
+        ],
+    }
+
+
+def test_analyze_relationships_without_prior_results_returns_empty_dict(
+    sample_eda_dataframe: pandas.DataFrame,
+):
+    assert analysis.analyze_relationships(sample_eda_dataframe) == {}

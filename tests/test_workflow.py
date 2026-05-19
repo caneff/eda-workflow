@@ -64,6 +64,7 @@ def test_graph_uses_shared_extract_observations_node():
     assert "profile_dataset" in node_names
     assert "analyze_missingness" in node_names
     assert "compute_aggregates" in node_names
+    assert "analyze_relationships" in node_names
     assert node_names.count("extract_observations") == 1
     assert "synthesize_findings" in node_names
     assert not any(name.startswith("extract_observations_") for name in node_names)
@@ -123,9 +124,12 @@ def test_invoke_workflow_without_model_profiles_dataset_and_missingness(
     assert result is None
     results = eda_workflow.get_results()
     assert results is not None
-    assert {"profile_dataset", "analyze_missingness", "compute_aggregates"}.issubset(
-        results
-    )
+    assert {
+        "profile_dataset",
+        "analyze_missingness",
+        "compute_aggregates",
+        "analyze_relationships",
+    }.issubset(results)
 
     profile = results["profile_dataset"]
     assert_dict_contains(
@@ -152,6 +156,7 @@ def test_invoke_workflow_without_model_profiles_dataset_and_missingness(
     )
 
     assert results["compute_aggregates"] == {}
+    assert results["analyze_relationships"] == {}
 
 
 def test_invoke_workflow_without_model_sets_no_llm_summary(
