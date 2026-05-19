@@ -45,6 +45,7 @@ def profile_dataset(
 ) -> dict[str, Any]:
     """Generate dataset profile with basic statistics."""
     numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+    # Include pandas 3 string dtype alongside legacy object strings.
     categorical_cols = df.select_dtypes(
         include=["object", "category", "str"],
     ).columns.tolist()
@@ -90,19 +91,17 @@ def _get_eligible_groups(
     categorical_column: str,
     max_groups: int,
     min_percentage: float,
-) -> tuple[dict[Any, dict[str, float | int | None]], list[Any]]:
+) -> pd.DataFrame:
     """Return sufficiently common category groups and their row coverage."""
-    if df[categorical_column].nunique(dropna=True) <= 1:
-        return {}, []
-
-    group_counts = cast(
-        pd.Series,
-        df[categorical_column].value_counts(dropna=True),
+    group_counts = df[categorical_column].value_counts(dropna=True)
+    group_summary = group_counts.rename_axis(categorical_column).reset_index(
+        name="count",
     )
-    group_summary = pd.DataFrame({
-        "count": group_counts,
-        "percentage": group_counts / len(df) * 100,
-    })
+    group_summary = group_summary.assign(
+        percentage=group_summary["count"] / len(df) * 100,
+    )
+    # Apply the coverage threshold before taking the largest groups so rare
+    # categories cannot displace common, analytically useful groups.
     eligible_group_summary = cast(
         pd.DataFrame,
         group_summary.loc[group_summary["percentage"] >= min_percentage].nlargest(
@@ -111,18 +110,13 @@ def _get_eligible_groups(
         ),
     )
     if len(eligible_group_summary) <= 1:
-        return {}, []
+        # A single surviving group has no meaningful between-group comparison.
+        return pd.DataFrame(columns=[categorical_column, "count", "percentage"])
 
-    eligible_groups = {}
-    for group in eligible_group_summary.index:
-        eligible_groups[group] = {
-            "count": int(cast(Any, eligible_group_summary.at[group, "count"])),
-            "percentage": _round_or_none(
-                eligible_group_summary.at[group, "percentage"],
-            ),
-        }
-
-    return eligible_groups, list(eligible_group_summary.index)
+    return eligible_group_summary.assign(
+        count=eligible_group_summary["count"].astype(int),
+        percentage=eligible_group_summary["percentage"].map(_round_or_none),
+    )
 
 
 def _summarize_categorical_column(
@@ -133,32 +127,32 @@ def _summarize_categorical_column(
     min_percentage: float,
 ) -> dict[str, Any]:
     """Summarize numeric columns for one categorical column."""
-    eligible_groups, eligible_group_names = _get_eligible_groups(
+    eligible_group_summary = _get_eligible_groups(
         df,
         categorical_column,
         max_groups,
         min_percentage,
     )
-    if not eligible_groups:
+    if eligible_group_summary.empty:
         return {}
-
-    numeric_summaries = {}
-    eligible_df = df.loc[df[categorical_column].isin(eligible_group_names)]
     if not numeric_columns:
         return {}
+    numeric_summaries = {}
+    eligible_group_names = eligible_group_summary[categorical_column]
+    eligible_df = df.loc[df[categorical_column].isin(eligible_group_names)]
 
+    # Use the full dataset as the reference distribution, not just eligible groups.
     overall_values = df[numeric_columns]
     q1 = overall_values.quantile(0.25)
     q3 = overall_values.quantile(0.75)
     overall_stats = (
-        pd.DataFrame({
-            "median": overall_values.median(),
-            "mean": overall_values.mean(),
-            "std": overall_values.std(),
-            "q1": q1,
-            "q3": q3,
-            "iqr": q3 - q1,
-        })
+        overall_values
+        .agg(["median", "mean", "std"])
+        .T.assign(
+            q1=q1,
+            q3=q3,
+            iqr=q3 - q1,
+        )
         .dropna(subset=["median"])
         .rename_axis("numeric_column")
         .reset_index()
@@ -170,20 +164,24 @@ def _summarize_categorical_column(
     # table with a two-level column index: numeric column, then statistic.
     group_stats = cast(
         pd.DataFrame,
-        eligible_df.groupby(categorical_column, observed=True)[numeric_columns].agg(
-            ["median", "mean", "std"]
-        ),
+        eligible_df.groupby(categorical_column, observed=True)[numeric_columns].agg([
+            "median",
+            "mean",
+            "std",
+        ]),
     )
     # Reshape to one row per category/numeric-column pair so it can be merged
     # with the overall numeric summary and filtered by the IQR rule below.
     group_stats_long = cast(
         pd.DataFrame,
-        group_stats.stack(level=0, future_stack=True),
+        group_stats.stack(level=0),
     )
     group_stats_long.index.names = [categorical_column, "numeric_column"]
     group_stats_long = cast(pd.DataFrame, group_stats_long.reset_index())
     group_stats_long = group_stats_long.dropna(subset=["median"])
 
+    # Attach each numeric column's overall reference band, then keep only
+    # category groups whose median falls outside that numeric column's IQR.
     notable_stats = group_stats_long.merge(
         overall_stats,
         on="numeric_column",
@@ -193,7 +191,15 @@ def _summarize_categorical_column(
         (notable_stats["median_group"] < notable_stats["q1"])
         | (notable_stats["median_group"] > notable_stats["q3"])
     ]
+    # Bring group coverage back onto each notable row for the final payload.
+    notable_stats = notable_stats.merge(
+        eligible_group_summary,
+        on=categorical_column,
+        how="left",
+    )
 
+    # The remaining loop packages already-computed pandas summaries into the
+    # nested dict shape consumed by downstream synthesis.
     for numeric_column, numeric_stats in notable_stats.groupby(
         "numeric_column",
         sort=False,
@@ -201,11 +207,11 @@ def _summarize_categorical_column(
         overall_row = numeric_stats.iloc[0]
         notable_groups = {}
 
-        for _, stats in numeric_stats.iterrows():
+        for stats in numeric_stats.to_dict(orient="records"):
             group = stats[categorical_column]
             notable_groups[group] = {
-                "count": eligible_groups[group]["count"],
-                "percentage": eligible_groups[group]["percentage"],
+                "count": int(stats["count"]),
+                "percentage": stats["percentage"],
                 "median": _round_or_none(stats["median_group"]),
                 "mean": _round_or_none(stats["mean_group"]),
                 "std": _round_or_none(stats["std_group"]),
@@ -226,8 +232,11 @@ def _summarize_categorical_column(
     if not numeric_summaries:
         return {}
 
+    # Use category values as output keys while keeping coverage fields as values.
     return {
-        "eligible_groups": eligible_groups,
+        "eligible_groups": eligible_group_summary.set_index(categorical_column).to_dict(
+            orient="index",
+        ),
         "numeric_summaries": numeric_summaries,
     }
 
