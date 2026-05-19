@@ -1,3 +1,4 @@
+import enum
 import logging
 import os
 from collections.abc import Callable, Hashable, Mapping
@@ -37,14 +38,21 @@ class SynthesisOutput(pydantic.BaseModel):
     )
 
 
-AnalysisFunction = Callable[[pd.DataFrame], dict[str, Any]]
+AnalysisFunction = Callable[..., dict[str, Any]]
+
+
+class AnalysisStepName(enum.StrEnum):
+    """Registered analysis step names."""
+
+    PROFILE_DATASET = "profile_dataset"
+    ANALYZE_MISSINGNESS = "analyze_missingness"
 
 
 @dataclass(frozen=True)
 class AnalysisStep:
     """Named deterministic analysis step used to build the workflow graph."""
 
-    name: str
+    name: AnalysisStepName
     analyze: AnalysisFunction
 
 
@@ -63,7 +71,10 @@ def load_prompt_pair(file_prefix: str) -> ChatPromptTemplate:
     ])
 
 
-def profile_dataset(df: pd.DataFrame) -> dict[str, Any]:
+def profile_dataset(
+    df: pd.DataFrame,
+    **kwargs: Any,
+) -> dict[str, Any]:
     """Generate dataset profile with basic statistics."""
     numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
     categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
@@ -84,7 +95,10 @@ def profile_dataset(df: pd.DataFrame) -> dict[str, Any]:
     }
 
 
-def analyze_missingness(df: pd.DataFrame) -> dict[str, Any]:
+def analyze_missingness(
+    df: pd.DataFrame,
+    **kwargs: Any,
+) -> dict[str, Any]:
     """Analyze missing values in the dataset."""
     missing_count = df.isnull().sum().to_dict()
     missing_pct = (df.isnull().sum() / len(df) * 100).round(2).to_dict()
@@ -103,8 +117,8 @@ def analyze_missingness(df: pd.DataFrame) -> dict[str, Any]:
 
 
 ANALYSIS_STEPS = [
-    AnalysisStep("profile_dataset", profile_dataset),
-    AnalysisStep("analyze_missingness", analyze_missingness),
+    AnalysisStep(AnalysisStepName.PROFILE_DATASET, profile_dataset),
+    AnalysisStep(AnalysisStepName.ANALYZE_MISSINGNESS, analyze_missingness),
 ]
 
 
@@ -290,13 +304,15 @@ def make_eda_baseline_workflow(
         """Create a graph node for one registered analysis step."""
 
         def analysis_node(state: EDAState):
-            logger.info("Running analysis step: %s", step.name)
+            step_name = step.name.value
+            logger.info("Running analysis step: %s", step_name)
             df = pd.DataFrame.from_dict(state.dataframe_dict)
-            results = dict(state.results)
-            results[step.name] = step.analyze(df)
+            prior_results = dict(state.results)
+            step_results = step.analyze(df, results=prior_results)
+            results = {**prior_results, step_name: step_results}
 
             return {
-                "current_step": step.name,
+                "current_step": step_name,
                 "results": results,
             }
 
@@ -356,7 +372,7 @@ def make_eda_baseline_workflow(
             "recommendations": response.recommendations,
         }
 
-    step_names = [step.name for step in ANALYSIS_STEPS]
+    step_names = [step.name.value for step in ANALYSIS_STEPS]
     next_step_by_name = {
         step_name: step_names[index + 1]
         for index, step_name in enumerate(step_names[:-1])
@@ -373,14 +389,14 @@ def make_eda_baseline_workflow(
     workflow = StateGraph(EDAState)
 
     for step in ANALYSIS_STEPS:
-        workflow.add_node(step.name, make_analysis_node(step))
+        workflow.add_node(step.name.value, make_analysis_node(step))
     workflow.add_node("extract_observations", extract_observations_node)
     workflow.add_node("synthesize_findings", synthesize_findings_node)
 
-    workflow.set_entry_point(ANALYSIS_STEPS[0].name)
+    workflow.set_entry_point(ANALYSIS_STEPS[0].name.value)
 
     for step in ANALYSIS_STEPS:
-        workflow.add_edge(step.name, "extract_observations")
+        workflow.add_edge(step.name.value, "extract_observations")
     workflow.add_conditional_edges(
         "extract_observations",
         route_after_observations,

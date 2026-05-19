@@ -120,6 +120,50 @@ def test_graph_uses_shared_extract_observations_node():
     assert not any(name.startswith("extract_observations_") for name in node_names)
 
 
+def test_analysis_steps_receive_prior_results(
+    sample_eda_dataframe: pandas.DataFrame,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    captured: dict[str, Any] = {}
+
+    def first_step(
+        df: pandas.DataFrame,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        return {"rows": len(df)}
+
+    def second_step(
+        df: pandas.DataFrame,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        captured["results"] = kwargs["results"]
+        return {"columns": len(df.columns)}
+
+    monkeypatch.setattr(
+        eda_workflow.eda_workflow,
+        "ANALYSIS_STEPS",
+        [
+            eda_workflow.eda_workflow.AnalysisStep(
+                eda_workflow.eda_workflow.AnalysisStepName.PROFILE_DATASET,
+                first_step,
+            ),
+            eda_workflow.eda_workflow.AnalysisStep(
+                eda_workflow.eda_workflow.AnalysisStepName.ANALYZE_MISSINGNESS,
+                second_step,
+            ),
+        ],
+    )
+    workflow = eda_workflow.eda_workflow.make_eda_baseline_workflow(model=None)
+
+    workflow.invoke(
+        eda_workflow.eda_workflow.EDAState(
+            dataframe_dict=sample_eda_dataframe.to_dict()
+        )
+    )
+
+    assert captured["results"] == {"profile_dataset": {"rows": 3}}
+
+
 def test_invoke_workflow_without_model_profiles_dataset_and_missingness(
     sample_eda_csv_path: Path,
 ):
