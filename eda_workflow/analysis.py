@@ -318,6 +318,16 @@ def analyze_relationships(
     **kwargs: Any,
 ) -> dict[str, Any]:
     """Analyze relationships between variables."""
+
+    # Get results and profile as in aggregate_results beginning. Get all numeric columns that aren't highly missing.
+
+    # Calculate spearman rank correlations between every pair of numeric columns that is remaining.  Only keep up to `max_correlations`
+    # and only keep correlations with absolute values above `corr_threshold`. Keep only the largest in absolute value.
+
+    # For each kept pair, make dictionary entries that track both feature names, correlation, and correlation direction (positive or negative)
+
+    # Finally output a dict with the strongest positive and strongest negative relationships separated, as well as a list of each numeric column
+    # considered.
     return {}
 
 
