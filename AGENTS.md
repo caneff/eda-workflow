@@ -20,6 +20,20 @@
 - Never write secrets; always use environment variables.
 - **`main` / default branch:** Do not merge into `main` or `git push origin main` unless the user explicitly asks (e.g. “push to main,” “ship to main”). Otherwise use a feature branch and push that branch only.
 
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues for this repo. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+This repo uses the default triage label vocabulary. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+This repo uses a single-context domain docs layout. See `docs/agents/domain.md`.
+
 ## Testing
 
 - Use pytest for unit tests.
