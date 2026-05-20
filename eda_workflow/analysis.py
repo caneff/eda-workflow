@@ -48,7 +48,7 @@ def profile_dataset(
     numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
     # Include pandas 3 string dtype alongside legacy object strings.
     categorical_cols = df.select_dtypes(
-        include=["object", "category", "str"],
+        include=["object", "category", "string"],
     ).columns.tolist()
 
     return {
@@ -112,7 +112,11 @@ def _get_eligible_groups(
     )
     if len(eligible_group_summary) <= 1:
         # A single surviving group has no meaningful between-group comparison.
-        return pd.DataFrame(columns=[categorical_column, "count", "percentage"])
+        return pd.DataFrame({
+            categorical_column: pd.Series(dtype="object"),
+            "count": pd.Series(dtype="int64"),
+            "percentage": pd.Series(dtype="float64"),
+        })
 
     return eligible_group_summary.assign(
         count=eligible_group_summary["count"].astype(int),
